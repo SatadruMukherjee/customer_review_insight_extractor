@@ -1,0 +1,48 @@
+name: selective_run
+on: 
+   push:
+jobs:
+  notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: AKIA4ASLMUJLQX5L2DNC
+          aws-secret-access-key: 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
+          aws-region: us-east-1
+  
+      - name: Update lambda layer for Pandas
+        env: 
+              runtime: python3.12
+              requirements_file: aws/lambda_layer_builder/anthropic.txt
+              layer_name: anthropic_lambda_layer_yt
+              description: "Python Layer for anthropic_yt"
+        run: |
+            output_folder=$(mktemp -d -t temp-dir-XXXXXX)
+            echo "Temporary directory created at $output_folder"
+            echo "Executing : cp $requirements_file $output_folder/requirements.txt"
+            cp $requirements_file $output_folder/requirements.txt
+            zip_command="zip -r layer.zip *"
+            docker_image="public.ecr.aws/sam/build-$runtime:latest"
+            echo "Docker Base image to be used: $docker_image"
+            volume_params="-v $output_folder:/layer"
+            echo "Volume Parameter to be used: $volume_params"
+            package_folder="python/lib/$runtime/site-packages/"
+            echo "Pip install will happen at : $package_folder"
+            install_command="pip install -r requirements.txt -t $package_folder"
+            echo "Execution: docker run --rm $volume_params -w \"/layer\" \"$docker_image\" /bin/bash -c \"$install_command && $zip_command\""
+            docker run --rm $volume_params -w "/layer" "$docker_image" /bin/bash -c "$install_command && $zip_command"
+            
+            echo "Uploading layer $name to AWS"
+            echo "Executing: aws lambda publish-layer-version --layer-name \"$layer_name\" --compatible-runtimes \"$runtime\" --zip-file \"fileb://${output_folder}/layer.zip\" --description \"$description\""
+            aws lambda publish-layer-version --layer-name "$layer_name" --compatible-runtimes "$runtime" --zip-file "fileb://${output_folder}/layer.zip" --description "$description"
+            echo "Upload complete"
+            
+            echo "Cleaning up"
+            rm -rf output_folder
+            echo "Temporary directory removed"    
+      
