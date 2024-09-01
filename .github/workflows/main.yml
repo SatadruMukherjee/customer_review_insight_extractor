@@ -11,9 +11,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: AKIA4ASLMUJLQX5L2DNC
-          aws-secret-access-key: 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
-          aws-region: us-east-1
+          aws-access-key-id: {AWS_ACCESS_KEY_ID}
+          aws-secret-access-key: {AWS_SECRET_ACCESS_KEY}
+          aws-region: {region_name}
   
       - name: Update lambda layer for Pandas
         env: 
